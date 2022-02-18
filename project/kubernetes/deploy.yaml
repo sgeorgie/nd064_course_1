@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - image: sarmadmjg/techtrends:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         name: techtrends
         ports:
           - containerPort: 3111
@@ -34,10 +34,3 @@ spec:
           httpGet:
             path: /healthz
             port: 3111
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
-      dnsPolicy: ClusterFirst
-      restartPolicy: Always
-      schedulerName: default-scheduler
-      securityContext: {}
-      terminationGracePeriodSeconds: 30
