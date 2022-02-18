@@ -2,6 +2,23 @@ import sqlite3
 
 from flask import Flask, jsonify, json, render_template, request, url_for, redirect, flash
 from werkzeug.exceptions import abort
+from logging.config import dictConfig
+
+dictConfig({
+    'version': 1,
+    'formatters': {'default': {
+        'format': '[%(asctime)s] %(levelname)s: %(message)s',
+    }},
+    'handlers': {'wsgi': {
+        'class': 'logging.StreamHandler',
+        'stream': 'ext://flask.logging.wsgi_errors_stream',
+        'formatter': 'default'
+    }},
+    'root': {
+        'level': 'DEBUG',
+        'handlers': ['wsgi']
+    }
+})
 
 # Function to get a database connection.
 # This function connects to database with the name `database.db`
@@ -22,6 +39,24 @@ def get_post(post_id):
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your secret key'
 
+# Health checks
+@app.route("/healthz")
+def status():
+    return {
+        "result": "OK - healthy"
+    }
+
+# Metrics
+@app.route("/metrics")
+def metrics():
+    connection = get_db_connection()
+    result = connection.execute('SELECT COUNT(*) AS count FROM posts').fetchone()
+    connection.close()
+    return {
+        "post_count": result["count"],
+        "db_connection_count": 1,
+    }
+
 # Define the main route of the web application 
 @app.route('/')
 def index():
@@ -36,13 +71,16 @@ def index():
 def post(post_id):
     post = get_post(post_id)
     if post is None:
+      app.logger.error('Article with id "%s" not found', post_id)
       return render_template('404.html'), 404
     else:
+      app.logger.info('Article "%s" retrieved!', post["title"])
       return render_template('post.html', post=post)
 
 # Define the About Us page
 @app.route('/about')
 def about():
+    app.logger.info('"About Us" page retrieved!')
     return render_template('about.html')
 
 # Define the post creation functionality 
@@ -61,6 +99,7 @@ def create():
             connection.commit()
             connection.close()
 
+            app.logger.info('New article "%s" created!', title)
             return redirect(url_for('index'))
 
     return render_template('create.html')
